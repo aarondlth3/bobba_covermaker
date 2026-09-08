@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111114">
+<title>AA Studio | Editor de portadas</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#111114;color:#f3f3f5;--bg:#111114;--panel:#1b1b20;--control:#25252b;--line:#383840;--muted:#a0a0aa;--accent:#d4c8ff;--accent-bg:#383244}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{height:100vh;height:100dvh}
+button,input,select{font:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app{height:100%;max-width:1120px;margin:auto;padding:14px 20px 18px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:16px;min-height:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.brand{font-size:21px;font-weight:760;letter-spacing:-.045em}
+.subtitle{font-size:11px;color:var(--muted);margin-top:2px}
+.top-actions{display:flex;align-items:center;gap:9px}
+.badge{border:1px solid var(--line);border-radius:99px;color:#c9c0fa;padding:7px 10px;font-size:11px;white-space:nowrap}
+.quick-export{border:0;background:var(--accent);color:#221d31;border-radius:9px;padding:10px 14px;font-size:12px;font-weight:750;min-height:42px}
+.workspace{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,390px);gap:25px}
+.stage-wrap{min-height:0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.stage{position:relative;width:min(100%,580px,calc(100dvh - 155px));aspect-ratio:1;flex:none;border:1px solid #3b3b42;border-radius:12px;overflow:hidden;background:#151518;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.stage:active{cursor:grabbing}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.loading{position:absolute;inset:0;display:grid;place-items:center;padding:20px;background:#17171a;color:var(--muted);text-align:center;font-size:12px;line-height:1.5}
+.stage.ready .loading{display:none}
+.stage-info{width:100%;display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:11px}
+.layer-chip{display:flex;align-items:center;gap:6px}
+.layer-chip span{color:#d9d0ff;font-weight:650}
+.hint{color:var(--muted);font-size:11px}
+.editor{min-height:0;min-width:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+.tabbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:5px;background:#1b1b20;border-bottom:1px solid var(--line);flex:none}
+.nav-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:54px;border:0;border-radius:9px;background:transparent;color:#9898a4;font-size:11px;font-weight:650;padding:6px 2px}
+.nav-tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav-tab.active{background:var(--accent-bg);color:#e8e0ff}
+.editor-scroll{min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#55545e transparent}
+.tab-panel{padding:19px 18px 24px;min-height:100%}
+.panel-title{font-size:17px;font-weight:750;letter-spacing:-.025em;margin:0}
+.panel-subtitle{font-size:11px;color:var(--muted);line-height:1.5;margin:5px 0 0}
+.section{border-top:1px solid var(--line);margin-top:19px;padding-top:19px}
+.section-heading{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:750;color:#9595a2;margin:0 0 12px}
+.upload{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid #484852;border-radius:9px;min-height:44px;padding:9px;text-align:center;font-size:12px;font-weight:600;color:#e4e4e9;cursor:pointer;margin-top:14px}
+.upload input{display:none}
+.upload svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;font-weight:600}
+.value{font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.range{width:100%;height:30px;margin:9px 0 0;accent-color:#bbaafa;touch-action:pan-x}
+.actions{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:8px}
+.small{min-height:40px;padding:9px 11px;border:1px solid #44444d;border-radius:8px;background:transparent;color:#d0d0d8;font-size:11px;font-weight:600}
+.small:active,.pad button:active{background:#45414e}
+.move-row{display:flex;align-items:center;justify-content:space-around;gap:14px}
+.pad{display:grid;grid-template-columns:repeat(3,43px);grid-template-rows:repeat(3,40px);gap:4px}
+.pad button{border:1px solid #43434c;background:var(--control);color:#e7e7ec;border-radius:8px;font-size:18px}
+.pad .up{grid-column:2;grid-row:1}.pad .left{grid-column:1;grid-row:2}.pad .center{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}.pad .down{grid-column:2;grid-row:3}
+.step{display:flex;flex-direction:column;gap:8px;font-size:11px;color:var(--muted)}
+.step select{min-height:43px;min-width:86px;padding:9px;border:1px solid #484852;border-radius:8px;background:var(--control);color:#eee;font-size:13px}
+.mirror{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;border:1px solid #494952;border-radius:9px;background:var(--control);color:#e6e6ec;padding:11px 13px;text-align:left;font-size:12px;font-weight:650}
+.mirror.active{border-color:#a999e8;background:var(--accent-bg);color:#e8e0ff}
+.mirror svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.mirror .state{font-size:10px;color:var(--muted)}
+.mirror.active .state{color:#dbd0ff}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.mode{min-height:46px;padding:8px 5px;border:1px solid #484852;border-radius:9px;background:transparent;color:#bdbdc7;font-size:11px;font-weight:650}
+.mode.active{border-color:#a999e8;background:var(--accent-bg);color:#e8e0ff}
+.color-panel{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:13px;padding:13px;border:1px solid var(--line);border-radius:10px;background:#17171b}
+.color-label{font-size:12px;font-weight:650}
+.swatches{display:flex;align-items:center;gap:9px;margin-top:12px}
+.swatch{width:33px;height:33px;border:1px solid #666;border-radius:8px;padding:0}
+.swatch.active{outline:2px solid #bbaafa;outline-offset:2px}
+.color-input{width:45px;height:40px;padding:3px;border:1px solid #55555e;background:#26262c;border-radius:8px;cursor:pointer}
+.hex{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:5px;text-align:center}
+.description{color:var(--muted);font-size:11px;line-height:1.55;margin:12px 0 0}
+.fixed{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:11px;line-height:1.5}
+.fixed svg{width:18px;height:18px;flex:none;stroke:#bbaafa;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.export{width:100%;min-height:49px;margin-top:14px;border:0;border-radius:10px;background:var(--accent);color:#252038;font-size:13px;font-weight:750}
+.secondary-export{width:100%;min-height:44px;margin-top:10px;border:1px solid #484852;border-radius:9px;background:transparent;color:#e4e4e9;font-size:12px;font-weight:650}
+.status{margin-top:11px;min-height:18px;color:#a5a5b0;font-size:11px;line-height:1.5}
+.note{font-size:11px;color:#85858f;line-height:1.6;margin-top:12px}
+.output-info{display:grid;grid-template-columns:1fr auto;gap:9px;border:1px solid var(--line);border-radius:10px;padding:13px;background:#17171b;font-size:12px}
+.output-info span{color:var(--muted)}
+.output-info strong{font-weight:650}
+@media(max-width:690px), (max-height:500px) and (max-width:950px){
+  .app{padding:8px 12px max(8px,env(safe-area-inset-bottom));gap:8px}
+  .top{min-height:40px}
+  .brand{font-size:18px}
+  .subtitle{display:none}
+  .badge{display:none}
+  .quick-export{min-height:38px;padding:8px 12px}
+  .workspace{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:9px}
+  .stage-wrap{justify-content:flex-start;gap:7px}
+  .stage{width:min(100%,420px,max(135px,calc(100dvh - 310px)));border-radius:9px}
+  .stage-info{gap:7px;font-size:10px;min-height:16px}
+  .hint{font-size:10px}
+  .editor{border-radius:11px;min-height:0}
+  .tabbar{padding:4px}
+  .nav-tab{min-height:50px}
+  .tab-panel{padding:15px 16px 24px}
+  .section{margin-top:17px;padding-top:17px}
+  .actions .small{padding:9px 7px}
+}
+@media(max-height:600px) and (max-width:690px), (max-height:500px) and (max-width:950px){
+  .app{padding-top:5px;gap:5px}
+  .top{min-height:34px}
+  .stage{width:min(100%,420px,max(110px,calc(100dvh - 275px)))}
+  .stage-wrap{gap:4px}
+  .hint{display:none}
+  .nav-tab{min-height:43px;flex-direction:row;gap:5px}
+  .nav-tab svg{width:17px;height:17px}
+}
+@media(min-width:691px) and (max-height:650px){
+  .app{padding-top:8px;padding-bottom:8px;gap:8px}
+  .stage{width:min(100%,520px,calc(100dvh - 115px))}
+  .stage-info{display:none}
+}
+</style>
+</head>
+<body>
+<main class="app" id="aa-editor">
+  <header class="top">
+    <div><div class="brand">AA Studio</div><div class="subtitle">Editor de portadas</div></div>
+    <div class="top-actions"><span class="badge">350 × 350 PNG</span><button class="quick-export" id="quick-export" type="button" disabled>Guardar PNG</button></div>
+  </header>
+  <div class="workspace">
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <canvas id="artboard" width="350" height="350" tabindex="0" aria-label="Lienzo de portada. Arrastra para mover la capa seleccionada y usa dos dedos para escalar."></canvas>
+        <div class="loading" id="loading">Cargando las capas de prueba…</div>
+      </div>
+      <div class="stage-info"><div class="layer-chip">Moviendo: <span id="active-layer-label">Sujeto</span></div><div class="hint">Un dedo mueve · Dos dedos escalan</div></div>
+    </div>
+    <div class="editor">
+      <nav class="tabbar" role="tablist" aria-label="Secciones de edición">
+        <button class="nav-tab active" type="button" role="tab" id="tab-subject" data-tab="subject" aria-controls="panel-subject" aria-selected="true" tabindex="0"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20v-2a7 7 0 0 1 14 0v2"/></svg><span>Sujeto</span></button>
+        <button class="nav-tab" type="button" role="tab" id="tab-background" data-tab="background" aria-controls="panel-background" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg><span>Fondo</span></button>
+        <button class="nav-tab" type="button" role="tab" id="tab-letters" data-tab="letters" aria-controls="panel-letters" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 20 7-16 7 16M5.5 14h9M16 20l-2-5h7M18 8l3 7"/></svg><span>AA</span></button>
+        <button class="nav-tab" type="button" role="tab" id="tab-export" data-tab="export" aria-controls="panel-export" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></svg><span>Exportar</span></button>
+      </nav>
+      <div class="editor-scroll" id="editor-scroll">
+        <section class="tab-panel" id="panel-subject" role="tabpanel" aria-labelledby="tab-subject">
+          <h2 class="panel-title">Sujeto</h2>
+          <p class="panel-subtitle">Acomoda el recorte por delante de las AA.</p>
+          <label class="upload"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 17v3h16v-3"/></svg>Cambiar sujeto<input id="subject-file" type="file" accept="image/*"></label>
+          <div class="section"><h3 class="section-heading">Tamaño</h3><div class="row"><span>Escala</span><span class="value" id="subject-scale-value">100 %</span></div><input class="range" id="subject-scale" type="range" min="25" max="400" step="1" value="100" aria-label="Escala del sujeto"><div class="actions"><button class="small" type="button" data-scale-minus="subject">−1 %</button><button class="small" type="button" data-reset="subject">Restablecer</button><button class="small" type="button" data-scale-plus="subject">+1 %</button></div></div>
+          <div class="section"><h3 class="section-heading">Orientación</h3><button class="mirror" id="flip-subject" type="button" aria-pressed="false"><span>Voltear horizontalmente</span><span style="display:flex;align-items:center;gap:9px"><span class="state" id="flip-state">Normal</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M9 7 4 12l5 5M15 7l5 5-5 5"/></svg></span></button><p class="description">El efecto espejo conserva el centro, el tamaño y la posición del sujeto.</p></div>
+          <div class="section"><h3 class="section-heading">Posición precisa</h3><div class="move-row"><div class="pad"><button class="up" type="button" data-move="up" aria-label="Mover arriba">↑</button><button class="left" type="button" data-move="left" aria-label="Mover izquierda">←</button><button class="center" type="button" data-center="subject" aria-label="Centrar sujeto">⌖</button><button class="right" type="button" data-move="right" aria-label="Mover derecha">→</button><button class="down" type="button" data-move="down" aria-label="Mover abajo">↓</button></div><label class="step">Paso por toque<select class="step-select"><option value="1">1 px</option><option value="5" selected>5 px</option><option value="10">10 px</option></select></label></div></div>
+        </section>
+        <section class="tab-panel" id="panel-background" role="tabpanel" aria-labelledby="tab-background" hidden>
+          <h2 class="panel-title">Fondo</h2>
+          <p class="panel-subtitle">Escala, encuadra y desenfoca el fondo completo.</p>
+          <label class="upload"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 17v3h16v-3"/></svg>Cambiar fondo<input id="background-file" type="file" accept="image/*"></label>
+          <div class="section"><h3 class="section-heading">Tamaño</h3><div class="row"><span>Escala</span><span class="value" id="background-scale-value">100 %</span></div><input class="range" id="background-scale" type="range" min="100" max="800" step="1" value="100" aria-label="Escala del fondo"><div class="actions"><button class="small" type="button" data-scale-minus="background">−1 %</button><button class="small" type="button" data-reset="background">Restablecer</button><button class="small" type="button" data-scale-plus="background">+1 %</button></div></div>
+          <div class="section"><h3 class="section-heading">Desenfoque</h3><div class="row"><span>Blur del fondo</span><span class="value" id="blur-value">0 px</span></div><input class="range" id="blur" type="range" min="0" max="20" step="1" value="0" aria-label="Desenfoque del fondo"><div class="actions"><button class="small" type="button" id="blur-reset">Quitar desenfoque</button></div><p class="description">Solo se desenfoca el fondo. Las AA y el sujeto permanecen nítidos. El efecto también se conserva dentro de las letras en los modos de máscara.</p></div>
+          <div class="section"><h3 class="section-heading">Posición precisa</h3><div class="move-row"><div class="pad"><button class="up" type="button" data-move="up" aria-label="Mover arriba">↑</button><button class="left" type="button" data-move="left" aria-label="Mover izquierda">←</button><button class="center" type="button" data-center="background" aria-label="Centrar fondo">⌖</button><button class="right" type="button" data-move="right" aria-label="Mover derecha">→</button><button class="down" type="button" data-move="down" aria-label="Mover abajo">↓</button></div><label class="step">Paso por toque<select class="step-select"><option value="1">1 px</option><option value="5" selected>5 px</option><option value="10">10 px</option></select></label></div></div>
+        </section>
+        <section class="tab-panel" id="panel-letters" role="tabpanel" aria-labelledby="tab-letters" hidden>
+          <h2 class="panel-title">Estilo de AA</h2>
+          <p class="panel-subtitle">Las letras permanecen fijas entre el fondo y el sujeto.</p>
+          <div class="section" style="border-top:0;margin-top:15px;padding-top:0"><h3 class="section-heading">Composición</h3><div class="modes" role="group" aria-label="Modo de las letras"><button class="mode active" type="button" data-mode="solid" aria-pressed="true">Color sólido</button><button class="mode" type="button" data-mode="invert" aria-pressed="false">Invertir</button><button class="mode" type="button" data-mode="gray" aria-pressed="false">Blanco y negro</button></div><div class="color-panel" id="color-panel"><div><div class="color-label">Color de las letras</div><div class="swatches"><button class="swatch active" type="button" data-color="#ffffff" style="background:#ffffff" aria-label="Blanco" title="Blanco"></button><button class="swatch" type="button" data-color="#000000" style="background:#000000" aria-label="Negro" title="Negro"></button><button class="swatch" type="button" data-color="#d7c6aa" style="background:#d7c6aa" aria-label="Crema" title="Crema"></button><button class="swatch" type="button" data-color="#c9574b" style="background:#c9574b" aria-label="Terracota" title="Terracota"></button></div></div><div><input class="color-input" id="letter-color" type="color" value="#ffffff" aria-label="Elegir color personalizado"><div class="hex" id="hex-value">#FFFFFF</div></div></div><p class="description" id="mode-description">Las AA tienen un relleno sólido. El sujeto permanece por delante de las letras.</p></div>
+          <div class="section"><div class="fixed"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>La máscara AA está bloqueada. Su tamaño y posición no cambian.</div><p class="description">Invertir y blanco y negro modifican únicamente los píxeles del fondo dentro de la forma de las letras. El sujeto siempre se dibuja al final.</p></div>
+        </section>
+        <section class="tab-panel" id="panel-export" role="tabpanel" aria-labelledby="tab-export" hidden>
+          <h2 class="panel-title">Exportar portada</h2>
+          <p class="panel-subtitle">Guarda la composición exactamente como la ves.</p>
+          <div class="section" style="border-top:0;margin-top:16px;padding-top:0"><div class="output-info"><span>Formato</span><strong>PNG</strong><span>Dimensiones</span><strong>350 × 350 px</strong><span>Capas</span><strong>Fondo + AA + Sujeto</strong></div><button class="export" id="export" type="button" disabled>Descargar PNG</button><button class="secondary-export" id="share" type="button" hidden>Compartir / Guardar en Archivos</button><div class="status" id="status" role="status" aria-live="polite">Preparando imágenes…</div></div>
+          <div class="section"><h3 class="section-heading">Procesamiento local</h3><p class="note">Las fotografías que selecciones se procesan en tu navegador. No se envían a ningún servidor. La exportación utiliza las tres capas y los mismos efectos del editor.</p></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+(() => {
+  'use strict';
+  const root = document.getElementById('aa-editor');
+  if (!root || root.dataset.initialized) return;
+  root.dataset.initialized = '1';
+  const $ = id => root.querySelector('#' + id);
+  const W = 350;
+  const canvas = $('artboard');
+  const ctx = canvas.getContext('2d');
+  const status = $('status');
+  const ASSETS = {
+    letters: 'images/letters.png',
+    background: 'images/test_backg.png',
+    subject: 'images/test_subject.png'
+  };
+  const state = {
+    active:'subject', tab:'subject', mode:'solid', color:'#ffffff', blur:0,
+    images:{}, layers:{}, pointers:new Map(), gesture:null,
+    mask:null, maskAlpha:null, maskVersion:0,
+    backgroundVersion:0, backgroundKey:'', effectKey:'',
+    ready:false, frame:0, step:5, exporting:false
+  };
+  const clamp = (n,a,b) => Math.min(b,Math.max(a,n));
+  const message = text => { status.textContent = text; };
+  function makeCanvas() { const c=document.createElement('canvas'); c.width=c.height=W; return c; }
+  const rawCanvas=makeCanvas(),rawCtx=rawCanvas.getContext('2d',{willReadFrequently:true});
+  const baseCanvas=makeCanvas(),baseCtx=baseCanvas.getContext('2d',{willReadFrequently:true});
+  const effectCanvas=makeCanvas(),effectCtx=effectCanvas.getContext('2d',{willReadFrequently:true});
+  function loadImage(url) {
+    return new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.onload=()=>img.naturalWidth&&img.naturalHeight?resolve(img):reject(new Error('Imagen vacía'));
+      img.onerror=()=>reject(new Error('No se pudo cargar '+url));
+      img.src=url;
+    });
+  }
+  function makeLayer(img,key) {
+    const cover=Math.max(W/img.naturalWidth,W/img.naturalHeight);
+    const base=key==='background'?cover:W*.80/img.naturalWidth;
+    return {img,x:key==='background'?175:200,y:key==='background'?175:225,
+      base,scale:base,min:key==='background'?cover:base*.25,max:key==='background'?cover*8:base*4,flipX:false};
+  }
+  function constrain(l,key) {
+    if(!l)return;
+    l.scale=clamp(l.scale,l.min,l.max);
+    if(key==='background'){
+      const hw=l.img.naturalWidth*l.scale/2,hh=l.img.naturalHeight*l.scale/2;
+      l.x=clamp(l.x,W-hw,hw);l.y=clamp(l.y,W-hh,hh);
+    }else{
+      l.x=clamp(l.x,-W*2,W*3);l.y=clamp(l.y,-W*2,W*3);
+    }
+  }
+  function drawLayer(context,l) {
+    if(!l)return;
+    const w=l.img.naturalWidth*l.scale,h=l.img.naturalHeight*l.scale;
+    context.save();
+    context.translate(l.x,l.y);
+    if(l.flipX)context.scale(-1,1);
+    context.drawImage(l.img,-w/2,-h/2,w,h);
+    context.restore();
+  }
+  function prepareMask(img) {
+    const m=makeCanvas(),mc=m.getContext('2d',{willReadFrequently:true});
+    mc.drawImage(img,0,0,W,W);
+    const data=mc.getImageData(0,0,W,W).data;
+    const alpha=new Uint8Array(W*W);
+    for(let i=0;i<alpha.length;i++)alpha[i]=data[i*4+3];
+    state.mask=m;state.maskAlpha=alpha;state.maskVersion++;
+    state.effectKey='';
+  }
+  // Three sliding box passes approximate a Gaussian blur. Each pass clamps
+  // its sampling coordinates to the edge, so no dark halos or empty borders
+  // are introduced by the filter.
+  function boxWidths(sigma) {
+    if(sigma<=0)return [];
+    const n=3,ideal=Math.sqrt(12*sigma*sigma/n+1);
+    let low=Math.floor(ideal);if(low%2===0)low--;
+    low=Math.max(1,low);
+    const high=low+2;
+    const m=Math.round((12*sigma*sigma-n*low*low-4*n*low-3*n)/(-4*low-4));
+    return Array.from({length:n},(_,i)=>i<m?low:high);
+  }
+  function boxPass(src,dst,w,h,r,horizontal) {
+    const length=horizontal?w:h,lines=horizontal?h:w;
+    const stride=horizontal?4:w*4,lineStride=horizontal?w*4:4;
+    const sample=(start,index)=>start+clamp(index,0,length-1)*stride;
+    for(let line=0;line<lines;line++){
+      const start=line*lineStride;
+      let sr=0,sg=0,sb=0;
+      for(let j=-r;j<=r;j++){
+        const p=sample(start,j);sr+=src[p];sg+=src[p+1];sb+=src[p+2];
+      }
+      const divisor=2*r+1;
+      for(let x=0;x<length;x++){
+        const p=start+x*stride;
+        dst[p]=sr/divisor;dst[p+1]=sg/divisor;dst[p+2]=sb/divisor;dst[p+3]=255;
+        const remove=sample(start,x-r),add=sample(start,x+r+1);
+        sr+=src[add]-src[remove];sg+=src[add+1]-src[remove+1];sb+=src[add+2]-src[remove+2];
+      }
+    }
+  }
+  function blurPixels(data,sigma) {
+    if(sigma<=0)return data;
+    let src=new Uint8ClampedArray(data),temp=new Uint8ClampedArray(data.length),dst=new Uint8ClampedArray(data.length);
+    for(const width of boxWidths(sigma)){
+      const r=(width-1)/2;
+      if(r===0)continue;
+      boxPass(src,temp,W,W,r,true);
+      boxPass(temp,dst,W,W,r,false);
+      const swap=src;src=dst;dst=swap;
+    }
+    return src;
+  }
+  function drawBackground() {
+    const key=state.backgroundVersion+'|'+state.blur;
+    if(key===state.backgroundKey)return;
+    rawCtx.clearRect(0,0,W,W);
+    rawCtx.fillStyle='#101013';rawCtx.fillRect(0,0,W,W);
+    drawLayer(rawCtx,state.layers.background);
+    baseCtx.clearRect(0,0,W,W);
+    if(state.blur===0)baseCtx.drawImage(rawCanvas,0,0);
+    else{
+      const pixels=rawCtx.getImageData(0,0,W,W);
+      pixels.data.set(blurPixels(pixels.data,state.blur));
+      baseCtx.putImageData(pixels,0,0);
+    }
+    state.backgroundKey=key;
+    state.effectKey='';
+  }
+  function renderEffect() {
+    if(!state.mask)return;
+    const key=[state.backgroundKey,state.maskVersion,state.mode,state.color].join('|');
+    if(key===state.effectKey)return;
+    effectCtx.globalCompositeOperation='source-over';
+    effectCtx.clearRect(0,0,W,W);
+    if(state.mode==='solid'){
+      effectCtx.fillStyle=state.color;effectCtx.fillRect(0,0,W,W);
+      effectCtx.globalCompositeOperation='destination-in';
+      effectCtx.drawImage(state.mask,0,0);
+      effectCtx.globalCompositeOperation='source-over';
+    }else{
+      const pixels=baseCtx.getImageData(0,0,W,W),d=pixels.data,a=state.maskAlpha;
+      for(let i=0;i<a.length;i++){
+        const p=i*4;
+        if(!a[i]){d[p+3]=0;continue;}
+        const r=d[p],g=d[p+1],b=d[p+2];
+        if(state.mode==='invert'){
+          d[p]=255-r;d[p+1]=255-g;d[p+2]=255-b;
+        }else{
+          const gray=Math.round(.2126*r+.7152*g+.0722*b);
+          d[p]=d[p+1]=d[p+2]=gray;
+        }
+        d[p+3]=a[i];
+      }
+      effectCtx.putImageData(pixels,0,0);
+    }
+    state.effectKey=key;
+  }
+  function render() {
+    if(!ctx)return;
+    drawBackground();renderEffect();
+    ctx.clearRect(0,0,W,W);
+    ctx.drawImage(baseCanvas,0,0);
+    if(state.mask)ctx.drawImage(effectCanvas,0,0);
+    drawLayer(ctx,state.layers.subject);
+  }
+  function scheduleRender() {
+    if(state.frame)return;
+    state.frame=requestAnimationFrame(()=>{state.frame=0;render();});
+  }
+  function current(){return state.layers[state.active];}
+  function refreshControls(){
+    for(const key of ['subject','background']){
+      const l=state.layers[key];
+      if(l){
+        const pct=Math.round(l.scale/l.base*100);
+        $(key+'-scale').value=String(pct);
+        $(key+'-scale-value').textContent=pct+' %';
+      }
+    }
+    $('active-layer-label').textContent=state.active==='subject'?'Sujeto':'Fondo';
+    $('blur').value=String(state.blur);$('blur-value').textContent=state.blur+' px';
+    const flipped=!!state.layers.subject?.flipX;
+    $('flip-subject').classList.toggle('active',flipped);
+    $('flip-subject').setAttribute('aria-pressed',String(flipped));
+    $('flip-state').textContent=flipped?'Espejo':'Normal';
+    const ready=!!(state.mask&&state.layers.background&&state.layers.subject);
+    $('export').disabled=$('quick-export').disabled=!ready;
+    scheduleRender();
+  }
+  function changeLayer(key,mutator){
+    const l=state.layers[key];if(!l)return;
+    mutator(l);constrain(l,key);
+    if(key==='background')state.backgroundVersion++;
+    refreshControls();
+  }
+  function setScale(key,scale,anchor){
+    changeLayer(key,l=>{
+      const old=l.scale;
+      l.scale=clamp(scale,l.min,l.max);
+      if(anchor&&old>0){
+        const ratio=l.scale/old;
+        l.x=anchor.x+(l.x-anchor.x)*ratio;
+        l.y=anchor.y+(l.y-anchor.y)*ratio;
+      }
+    });
+  }
+  function move(key,dx,dy){changeLayer(key,l=>{l.x+=dx;l.y+=dy;});}
+  function resetLayer(key){
+    const l=state.layers[key];if(!l)return;
+    state.layers[key]=makeLayer(l.img,key);
+    if(key==='background'){state.blur=0;state.backgroundVersion++;}
+    refreshControls();
+  }
+  function setBlur(value){
+    const n=Number(value);if(!Number.isFinite(n))return;
+    state.blur=clamp(Math.round(n),0,20);
+    refreshControls();
+  }
+  function setMode(mode){
+    if(!['solid','invert','gray'].includes(mode))return;
+    state.mode=mode;state.effectKey='';
+    root.querySelectorAll('[data-mode]').forEach(b=>{
+      const on=b.dataset.mode===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));
+    });
+    $('color-panel').hidden=mode!=='solid';
+    $('mode-description').textContent=mode==='solid'?'Las AA tienen un relleno sólido. El sujeto permanece por delante de las letras.':mode==='invert'?'Los colores del fondo se invierten solo dentro de las AA. El sujeto conserva sus colores.':'El fondo se convierte a escala de grises solo dentro de las AA. El sujeto conserva sus colores.';
+    scheduleRender();
+  }
+  function setColor(color){
+    if(!/^#[0-9a-f]{6}$/i.test(color))return;
+    state.color=color.toLowerCase();state.effectKey='';
+    $('letter-color').value=state.color;$('hex-value').textContent=state.color.toUpperCase();
+    root.querySelectorAll('[data-color]').forEach(b=>b.classList.toggle('active',b.dataset.color===state.color));
+    if(state.mode!=='solid')setMode('solid');else scheduleRender();
+  }
+  function cancelGestures(){
+    for(const id of state.pointers.keys()){
+      try{if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);}catch{}
+    }
+    state.pointers.clear();state.gesture=null;
+  }
+  function setTab(tab,focus=false){
+    if(!['subject','background','letters','export'].includes(tab))return;
+    cancelGestures();
+    state.tab=tab;
+    if(tab==='subject'||tab==='background')state.active=tab;
+    root.querySelectorAll('[data-tab]').forEach(b=>{
+      const on=b.dataset.tab===tab;
+      b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;
+    });
+    root.querySelectorAll('.tab-panel').forEach(p=>p.hidden=p.id!=='panel-'+tab);
+    $('editor-scroll').scrollTop=0;
+    refreshControls();
+    if(focus)$('tab-'+tab).focus();
+  }
+  root.querySelectorAll('[data-tab]').forEach(b=>{
+    b.addEventListener('click',()=>setTab(b.dataset.tab));
+    b.addEventListener('keydown',e=>{
+      const keys=['ArrowLeft','ArrowRight','Home','End'];
+      if(!keys.includes(e.key))return;
+      e.preventDefault();
+      const tabs=['subject','background','letters','export'];
+      let i=tabs.indexOf(state.tab);
+      if(e.key==='Home')i=0;else if(e.key==='End')i=3;
+      else i=(i+(e.key==='ArrowRight'?1:3))%4;
+      setTab(tabs[i],true);
+    });
+  });
+  root.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+  root.querySelectorAll('[data-color]').forEach(b=>b.addEventListener('click',()=>setColor(b.dataset.color)));
+  $('letter-color').addEventListener('input',e=>setColor(e.target.value));
+  for(const key of ['subject','background']){
+    $(key+'-scale').addEventListener('input',e=>{
+      const l=state.layers[key];if(l)setScale(key,l.base*Number(e.target.value)/100,{x:175,y:175});
+    });
+  }
+  root.querySelectorAll('[data-scale-minus]').forEach(b=>b.addEventListener('click',()=>{
+    const key=b.dataset.scaleMinus,l=state.layers[key];if(l)setScale(key,l.scale-l.base*.01,{x:175,y:175});
+  }));
+  root.querySelectorAll('[data-scale-plus]').forEach(b=>b.addEventListener('click',()=>{
+    const key=b.dataset.scalePlus,l=state.layers[key];if(l)setScale(key,l.scale+l.base*.01,{x:175,y:175});
+  }));
+  root.querySelectorAll('[data-reset]').forEach(b=>b.addEventListener('click',()=>resetLayer(b.dataset.reset)));
+  root.querySelectorAll('[data-center]').forEach(b=>b.addEventListener('click',()=>changeLayer(b.dataset.center,l=>{l.x=l.y=175;})));
+  root.querySelectorAll('.step-select').forEach(s=>s.addEventListener('change',e=>{
+    state.step=Number(e.target.value)||5;
+    root.querySelectorAll('.step-select').forEach(other=>other.value=String(state.step));
+  }));
+  root.querySelectorAll('[data-move]').forEach(b=>b.addEventListener('click',()=>{
+    const n=state.step,d=b.dataset.move;
+    move(state.active,d==='left'?-n:d==='right'?n:0,d==='up'?-n:d==='down'?n:0);
+  }));
+  $('flip-subject').addEventListener('click',()=>changeLayer('subject',l=>{l.flipX=!l.flipX;}));
+  $('blur').addEventListener('input',e=>setBlur(e.target.value));
+  $('blur-reset').addEventListener('click',()=>setBlur(0));
+  function point(e){
+    const r=canvas.getBoundingClientRect();
+    return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*W/r.height};
+  }
+  function captureGesture(){
+    const l=current(),p=[...state.pointers.values()];
+    if(!l||!p.length){state.gesture=null;return;}
+    const a=p[0],b=p[1]||a;
+    state.gesture={key:state.active,x:l.x,y:l.y,scale:l.scale,
+      mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},
+      distance:p.length>1?Math.hypot(a.x-b.x,a.y-b.y):0};
+  }
+  function updateGesture(){
+    const g=state.gesture,p=[...state.pointers.values()];
+    if(!g||!p.length)return;
+    const l=state.layers[g.key];if(!l)return;
+    const a=p[0],b=p[1]||a,mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    if(p.length>1&&g.distance>0){
+      l.scale=clamp(g.scale*Math.hypot(a.x-b.x,a.y-b.y)/g.distance,l.min,l.max);
+      const ratio=l.scale/g.scale;
+      l.x=mid.x+(g.x-g.mid.x)*ratio;l.y=mid.y+(g.y-g.mid.y)*ratio;
+    }else{
+      l.x=g.x+mid.x-g.mid.x;l.y=g.y+mid.y-g.mid.y;
+    }
+    constrain(l,g.key);
+    if(g.key==='background')state.backgroundVersion++;
+    refreshControls();
+  }
+  canvas.addEventListener('pointerdown',e=>{
+    if(!current())return;e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    state.pointers.set(e.pointerId,point(e));captureGesture();
+  });
+  canvas.addEventListener('pointermove',e=>{
+    if(!state.pointers.has(e.pointerId))return;
+    e.preventDefault();state.pointers.set(e.pointerId,point(e));updateGesture();
+  });
+  function endPointer(e){
+    if(!state.pointers.has(e.pointerId))return;
+    state.pointers.delete(e.pointerId);captureGesture();
+  }
+  canvas.addEventListener('pointerup',endPointer);
+  canvas.addEventListener('pointercancel',endPointer);
+  canvas.addEventListener('lostpointercapture',endPointer);
+  canvas.addEventListener('wheel',e=>{
+    const l=current();if(!l)return;
+    e.preventDefault();setScale(state.active,l.scale*Math.exp(-e.deltaY*.001),point(e));
+  },{passive:false});
+  canvas.addEventListener('keydown',e=>{
+    if(e.altKey||e.ctrlKey||e.metaKey)return;
+    const n=e.shiftKey?10:1;
+    const d={ArrowLeft:[-n,0],ArrowRight:[n,0],ArrowUp:[0,-n],ArrowDown:[0,n]}[e.key];
+    if(d){e.preventDefault();move(state.active,...d);}
+  });
+  async function replace(key,file){
+    if(!file)return;
+    if(!file.type.startsWith('image/')){message('Selecciona una imagen válida.');return;}
+    if(file.size>45*1024*1024){message('El archivo supera el límite de 45 MB.');return;}
+    const url=URL.createObjectURL(file);
+    try{
+      const img=await loadImage(url);
+      state.images[key]=img;state.layers[key]=makeLayer(img,key);
+      if(key==='background'){state.backgroundVersion++;state.blur=0;}
+      state.backgroundKey='';state.effectKey='';
+      setTab(key);
+      message(key==='subject'?'Sujeto reemplazado. Se conserva la transparencia del archivo.':'Fondo reemplazado.');
+    }catch{message('No se pudo leer la imagen. Prueba con PNG, JPEG o WebP.');}
+    finally{URL.revokeObjectURL(url);}
+  }
+  $('background-file').addEventListener('change',e=>{replace('background',e.target.files[0]);e.target.value='';});
+  $('subject-file').addEventListener('change',e=>{replace('subject',e.target.files[0]);e.target.value='';});
+  function captureBlob(){
+    if(state.frame){cancelAnimationFrame(state.frame);state.frame=0;}
+    render();
+    return new Promise((resolve,reject)=>{
+      try{canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('No se pudo generar el PNG.')),'image/png');}
+      catch(e){reject(e);}
+    });
+  }
+  async function exportPNG(share=false){
+    if(state.exporting||!state.mask||!state.layers.background||!state.layers.subject)return;
+    state.exporting=true;
+    $('export').disabled=$('quick-export').disabled=true;
+    try{
+      const blob=await captureBlob();
+      const filename='AA-playlist-350.png';
+      if(share&&navigator.share&&navigator.canShare){
+        const file=new File([blob],filename,{type:'image/png'});
+        if(navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title:'AA Studio'});
+          message('Portada compartida.');
+        }else{throw new Error('El dispositivo no admite compartir este archivo.');}
+      }else{
+        const url=URL.createObjectURL(blob),a=document.createElement('a');
+        a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+        message('PNG generado: 350 × 350 píxeles.');
+      }
+    }catch(e){
+      if(e.name!=='AbortError')message(e.message||'No se pudo exportar. Prueba desde GitHub Pages.');
+    }finally{state.exporting=false;refreshControls();}
+  }
+  $('export').addEventListener('click',()=>exportPNG());
+  $('quick-export').addEventListener('click',()=>exportPNG());
+  $('share').addEventListener('click',()=>exportPNG(true));
+  if(typeof navigator.share==='function'&&typeof navigator.canShare==='function')$('share').hidden=false;
+  async function init(){
+    // Load AA independently so it is never gated by the optional test images.
+    try{const img=await loadImage(ASSETS.letters);state.images.letters=img;prepareMask(img);}
+    catch{message('No se encontró images/letters.png. Comprueba que index.html esté en la raíz del repositorio.');}
+    const results=await Promise.allSettled(['background','subject'].map(async key=>[key,await loadImage(ASSETS[key])]));
+    for(const item of results){
+      if(item.status==='fulfilled'){
+        const [key,img]=item.value;state.images[key]=img;state.layers[key]=makeLayer(img,key);
+      }
+    }
+    state.ready=true;$('stage').classList.add('ready');refreshControls();
+    if(!state.mask)message('No se encontró images/letters.png. Comprueba la ruta y vuelve a cargar la página.');
+    else if(!state.layers.background||!state.layers.subject)message('Las AA están listas. Carga un fondo y un sujeto para comenzar.');
+    else message('Listo. Selecciona una sección y acomoda las capas.');
+  }
+  init();
+})();
+</script>
+</body>
+</html>
